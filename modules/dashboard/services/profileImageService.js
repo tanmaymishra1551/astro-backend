@@ -1,4 +1,4 @@
-import pool from "../config/db.js";
+import pool from "../../../config/db/mysql.db.js";
 
 export const updateProfileImage = async (userId, imageUrl) => {
     const result = await pool.query(

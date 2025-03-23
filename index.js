@@ -1,14 +1,17 @@
-// index.js
 import express from "express"
 import bodyParser from "body-parser"
 import dotenv from "dotenv"
 import http from "http"
 import connectDB from "./config/db/mongo.db.js"
-
+import cors from "cors";
 dotenv.config()
+
 
 // Create the Express application
 const app = express()
+app.use(cors());
+
+
 app.use(bodyParser.json())
 const server = http.createServer(app)
 // Initialize WebSocket server for the Chat module
@@ -36,7 +39,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: err.message })
 })
 
-const PORT = process.env.PORT || 8000
+const PORT = process.env.PORT || 3000
 connectDB()
     .then(
         server.listen(PORT, () => {

@@ -53,9 +53,9 @@ export const initChatSocket = (server) => {
         // Sending a message
         socket.on(
             "sendMessage",
-            async ({ roomId, message, senderId, receiverId }) => {
+            async ({ roomId, message, senderId, receiverId, timestamp }) => {
                 console.log(
-                    `Message from ${senderId} to ${receiverId} in room ${roomId}: ${message}`
+                    `Message from ${senderId} to ${receiverId} in room ${roomId}: ${message} at ${timestamp}`
                 )
                 // STORE MESSAGE IN DATABASE
                 try {
@@ -64,6 +64,7 @@ export const initChatSocket = (server) => {
                         senderId,
                         receiverId,
                         message,
+                        timestamp,
                     })
                     console.log("Message stored in database")
                 } catch (error) {
@@ -77,12 +78,13 @@ export const initChatSocket = (server) => {
                     recipientSocket.emit("receiveMessage", {
                         message,
                         senderId,
+                        timestamp,
                     })
                 } else {
                     // Send offline notification
                     sendOfflineNotification(receiverId, senderId, message)
                 }
-                io.to(roomId).emit("receiveMessage", { message, senderId })
+                io.to(roomId).emit("receiveMessage", { message, senderId, timestamp })
             }
         )
 
