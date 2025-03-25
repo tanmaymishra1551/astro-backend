@@ -12,66 +12,74 @@ import {
 import { ApiError, ApiResponse } from "../../../utils/responseHandler.js"
 
 export const testController = asyncHandler(async (req, res) => {
-    return res.status(200).json(ApiResponse(200, null, "Test controller is working"))
+    return res
+        .status(200)
+        .json(ApiResponse(200, null, "Test controller is working"))
 })
 
 export const registerUser = asyncHandler(async (req, res) => {
-    const { fullname, email, username, password, role } = req.body
+    const { fullname, email, username, password, role, phone } = req.body
     console.log(req.body)
     if (
         [fullname, email, username, password, role].some(
             (field) => !field?.trim()
         )
-) {
+    ) {
         ApiError(400, "All fields are required")
     }
-console.log(`Wokring fine`);
+    console.log(`Wokring fine`)
     const existingUser = await getUserByUsernameOrEmail(username, email)
-    console.log (`Existing user is ${existingUser}`);
+    console.log(`Existing user is ${existingUser}`)
     if (existingUser) {
         ApiError(409, "User with email or username already exists")
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
-
+    console.log(
+        `fullname, email, username, password, role,phone ${fullname}, ${email}, ${username}, ${password}, ${role}, ${phone}`
+    )
     const user = await createUser({
         fullname,
         email,
         username: username.toLowerCase(),
         password: hashedPassword,
         role,
+        phone,
     })
 
     if (!user) {
         ApiError(500, "Something went wrong while registering the user")
     }
     return res
-.status(201)
+        .status(201)
         .json(ApiResponse(200, user, "User registered successfully"))
 })
 
 export const loginUser = asyncHandler(async (req, res) => {
-    const { email, username, password } = req.body
+    const { phone, password } = req.body
 
-     console.log(`Username: ${username}, Password: ${password}`)
-    if (!username && !email) {
-        ApiError(400, "Username or email is required")
+    console.log(`Username: ${phone}, Password: ${password}`)
+    if (!phone) {
+        ApiError(400, "phone number is required")
     }
 
     // Find user by username or email
-    const user = await findOne(username, email)
+    const user = await findOne(phone)
 
     if (!user) {
         ApiError(404, "User does not exist")
     }
-     let User = JSON.stringify(user)
-     console.log(`User: ${User}`)
+    let User = JSON.stringify(user)
+    console.log(`User: ${User}`)
+    console.log(`user.password: ${user.password}`)
     //  Check password using bcrypt
+    console.log(`Password from frontend: ${password}`)
+    console.log(`Password from db: ${user.password}`)
     const isPasswordValid = await bcrypt.compare(password, user.password)
-
+    console.log(`isPasswordValid: ${isPasswordValid}`)
     if (!isPasswordValid) {
         ApiError(401, "Invalid user credentials")
-}
+    }
 
     // Generate JWT token
     const tokenPayload = { id: user.id, role: user.role }
@@ -95,7 +103,8 @@ export const loginUser = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options).json(
+        .cookie("refreshToken", refreshToken, options)
+        .json(
             ApiResponse(
                 200,
                 {
@@ -120,7 +129,7 @@ export const generateAccessAndRefreshTokens = async (userId) => {
 
         const user = loggeUser
         // Generate tokens
- const accessToken = jwt.sign(
+        const accessToken = jwt.sign(
             { id: user.id },
             process.env.ACCESS_TOKEN_SECRET,
             {
@@ -169,7 +178,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
         if (incomingRefreshToken !== user?.refreshToken) {
             ApiError(401, "Refresh token is expired or used")
-}
+        }
 
         const options = {
             httpOnly: true,

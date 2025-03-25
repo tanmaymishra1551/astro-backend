@@ -8,10 +8,11 @@ export const createUser = async ({
     username,
     password,
     role,
+    phone
 }) => {
     const result = await pool.query(
-        "INSERT INTO users (fullname,email,username, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        [fullname, email, username, password, role]
+        "INSERT INTO users (fullname,email,username, password, role,phone) VALUES ($1, $2, $3, $4, $5,$6) RETURNING *",
+        [fullname, email, username, password, role,phone]
     )
 
     let user = result.rows[0]
@@ -34,10 +35,10 @@ export const getUserByUsername = async (username) => {
     return result.rows[0]
 }
 
-export const findOne = async (username, email) => {
+export const findOne = async (phone) => {
     const result = await pool.query(
-        "SELECT * FROM users WHERE username = $1 OR email = $2",
-        [username, email]
+        "SELECT * FROM users WHERE phone = $1",
+        [phone]
     )
     return result.rows[0]
 }

@@ -1,11 +1,11 @@
 export const ApiError = (statusCode, message = "Error", details = null) => {
-    return {
-        statusCode,
-        success: false,
-        message,
-        error: details,
-    };
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    error.success = false;
+    error.error = details;
+    throw error; // Throw the error to stop execution
 };
+
 
 
 export const ApiResponse = (statusCode, data = null, message = "Success") => {
