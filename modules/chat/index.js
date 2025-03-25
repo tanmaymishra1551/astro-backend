@@ -1,113 +1,88 @@
-import { Server } from "socket.io"
-import ChatMessage from "../../modules/chat/models/ChatMessage.js"
-import { sendOfflineNotification } from "./services/notificationService.js"
+import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import ChatMessage from "../../modules/chat/models/ChatMessage.js";
+import { sendOfflineNotification } from "./services/notificationService.js";
 
-const connectedUsers = {} // userId -> socketInstance
+const connectedUsers = {}; // userId -> { socket, username }
 
 export const initChatSocket = (server) => {
     const io = new Server(server, {
         path: "/ws/chat",
-        cors: {
-            origin: "*",
-            methods: ["GET", "POST"],
-        },
-    })
+        cors: { origin: "*", methods: ["GET", "POST"] },
+    });
+
+    // Middleware for authentication
+    io.use((socket, next) => {
+        const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(" ")[1];
+        if (!token) return next(new Error("Authentication error: Token missing"));
+
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            socket.user = decoded; // Attach user data
+            next();
+        } catch {
+            return next(new Error("Authentication error: Invalid token"));
+        }
+    });
 
     io.on("connection", (socket) => {
-        console.log(`User connected: ${socket.id}`)
+        const { id: userId, username } = socket.user;
+        connectedUsers[userId] = { socket, username };
 
-        // Register user or astrologerId
+        console.log(`User connected: ${socket.id}, Username: ${username}, User ID: ${userId}`);
+
         socket.on("joinAstrologer", ({ astrologerId, isAstrologer }) => {
-            connectedUsers[astrologerId] = socket
-            console.log(`Astrologer dashboard connected: ${astrologerId}`)
+            connectedUsers[astrologerId] = { socket, username };
+            console.log(`Astrologer dashboard connected: ${astrologerId}`);
 
-            // If astrologer, notify clients
-            if (isAstrologer) {
-                console.log(
-                    `isAstrologer ${isAstrologer} is online. Notifying clients.`
-                )
-                io.emit("astrologerOnline", { astrologerId: astrologerId })
-            }
-        })
+            if (isAstrologer) io.emit("astrologerOnline", { astrologerId });
+        });
 
         socket.on("getUnreadMessages", async ({ astrologerId }) => {
             try {
-                // Query the database for unread messages for the astrologer
-                const unreadMessages = await ChatMessage.find({
-                    receiverId: astrologerId,
-                    read: false,
-                })
-                console.log("Unread messages fetched:", unreadMessages)
-                socket.emit("loadUnreadMessages", unreadMessages)
+                const unreadMessages = await ChatMessage.find({ receiverId: astrologerId, read: false });
+                socket.emit("loadUnreadMessages", unreadMessages);
             } catch (error) {
-                console.error("Error fetching unread messages:", error)
+                console.error("Error fetching unread messages:", error);
             }
-        })
+        });
 
-        // User joins a chat room
         socket.on("joinRoom", ({ roomId }) => {
-            socket.join(roomId)
-            console.log(`User ${socket.id} joined room ${roomId}`)
-        })
+            socket.join(roomId);
+            console.log(`User ${username} (${socket.id}) joined room ${roomId}`);
+        });
 
-        // Sending a message
-        socket.on(
-            "sendMessage",
-            async ({ roomId, message, senderId, receiverId, timestamp }) => {
-                console.log(
-                    `Message from ${senderId} to ${receiverId} in room ${roomId}: ${message} at ${timestamp}`
-                )
-                // STORE MESSAGE IN DATABASE
-                try {
-                    await ChatMessage.create({
-                        roomId,
-                        senderId,
-                        receiverId,
-                        message,
-                        timestamp,
-                    })
-                    console.log("Message stored in database")
-                } catch (error) {
-                    console.error("Error storing message:", error)
-                }
-
-                // Check if receiver (Astrologer) is online
-                const recipientSocket = connectedUsers[receiverId]
-
-                if (recipientSocket) {
-                    recipientSocket.emit("receiveMessage", {
-                        message,
-                        senderId,
-                        timestamp,
-                    })
-                } else {
-                    // Send offline notification
-                    sendOfflineNotification(receiverId, senderId, message)
-                }
-                io.to(roomId).emit("receiveMessage", { message, senderId, timestamp })
+        socket.on("sendMessage", async ({ roomId, message, senderId, receiverId, timestamp }) => {
+            try {
+                await ChatMessage.create({ roomId, senderId, receiverId, message, timestamp });
+                console.log("Message stored in database");
+            } catch (error) {
+                console.error("Error storing message:", error);
             }
-        )
 
-        // Handle user disconnect
+            const recipient = connectedUsers[receiverId];
+
+            if (recipient) {
+                recipient.socket.emit("receiveMessage", { message, senderId, timestamp });
+            } else {
+                sendOfflineNotification(receiverId, senderId, message);
+            }
+            io.to(roomId).emit("receiveMessage", { message, senderId, timestamp });
+        });
+
         socket.on("disconnect", () => {
-            console.log(`User disconnected: ${socket.id}`)
+            console.log(`User disconnected: ${socket.id}, Username: ${username}`);
 
-            for (const [userId, sock] of Object.entries(connectedUsers)) {
-                if (sock === socket) {
-                    delete connectedUsers[userId]
-                    console.log(
-                        `User ${userId} removed from active connections.`
-                    )
-
-                    // If astrologer goes offline, notify clients
-                    io.emit("astrologerOffline", { astrologerId: userId })
-                    break
+            for (const userId in connectedUsers) {
+                if (connectedUsers[userId].socket === socket) {
+                    delete connectedUsers[userId];
+                    console.log(`User ${username} (${userId}) removed from active connections.`);
+                    io.emit("astrologerOffline", { astrologerId: userId });
+                    break;
                 }
             }
-        })
-    })
+        });
+    });
 
-    return io
-}
-
-
+    return io;
+};
