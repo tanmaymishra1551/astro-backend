@@ -52,6 +52,7 @@ export const loggedInUserDetails = async (id) => {
     const result = await pool.query("SELECT * FROM users WHERE id = $1", [id])
     let user = result.rows[0]
     delete user.password && user.refresh_token
+    delete user.refresh_token
     return result.rows[0]
 }
 
