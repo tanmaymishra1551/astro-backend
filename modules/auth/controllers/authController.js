@@ -67,7 +67,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     const { accessToken, refreshToken } =
         await generateAccessAndRefreshTokens(user)
     const loggedInUser = await loggedInUserDetails(user.id)
-
+    loggedInUser.accessToken = accessToken
     return res
         .status(200)
         .cookie("refreshToken", refreshToken, {
@@ -77,7 +77,7 @@ export const loginUser = asyncHandler(async (req, res) => {
         .json(
             ApiResponse(
                 200,
-                { user: loggedInUser, accessToken },
+                { user: loggedInUser},
                 "User logged in successfully"
             )
         )
@@ -87,7 +87,11 @@ export const loginUser = asyncHandler(async (req, res) => {
 export const generateAccessAndRefreshTokens = async (userDetails) => {
     // console.log(`User details is ${JSON.stringify(userDetails)}`)
     const accessToken = jwt.sign(
-        { id: userDetails.id, username: userDetails.username, role: userDetails.role },
+        {
+            id: userDetails.id,
+            username: userDetails.username,
+            role: userDetails.role,
+        },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "15m" }
     )
