@@ -51,7 +51,7 @@ export const findById = async (id) => {
 export const loggedInUserDetails = async (id) => {
     const result = await pool.query("SELECT * FROM users WHERE id = $1", [id])
     let user = result.rows[0]
-    delete user.password && user.refresh_token
+    delete user.password 
     delete user.refresh_token
     return result.rows[0]
 }
@@ -71,7 +71,7 @@ export const getAllUsers = async () => {
 
 export const getAllAstrologer = async () => {
     const result = await pool.query(
-        "SELECT id, fullname, email FROM users WHERE role = 'astrologer'"
+        "SELECT id, fullname, username, email, role, profile_image, phone, status FROM users WHERE role = 'astrologer'"
     )
     return result.rows
 }

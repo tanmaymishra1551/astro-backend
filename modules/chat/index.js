@@ -107,7 +107,7 @@ export const initChatSocket = (server) => {
                     } else {
                         sendOfflineNotification(receiverID, senderID, message)
                     }
-                    // console.log(`Broadcasting data is ${JSON.stringify(messageData)}`)
+                    console.log(`Broadcasting data is ${JSON.stringify(messageData)}`)
                     io.to(roomId).emit("receiveMessage", messageData)
                 } catch (error) {
                     console.error("Error storing message:", error)
