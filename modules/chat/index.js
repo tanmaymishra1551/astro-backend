@@ -38,16 +38,71 @@ export const initChatSocket = (server) => {
         }
         // console.log(`User connected: ${JSON.stringify(socket.user)}`)
         // {"id":1,"username":"rahul90","role":"user","iat":1743137646,"exp":1743138546}
-        const { id: userId, username } = socket.user
-        connectedUsers[userId] = { socket, username }
+        const { id: userId, username, role, showOnline } = socket.user
+        connectedUsers[userId] = {
+            socket,
+            username,
+            role,
+            showOnline: role === "astrologer" ? true : undefined,
+        }
 
-        // console.log(`User connected and got details from JWT access token: ${JSON.stringify({ userId, username })}`)
-        // {"userId":1,"username":"rahul90"}
+        console.log(
+            "Connected Users:",
+            Object.entries(connectedUsers).map(([id, { username }]) => ({
+                id,
+                username,
+            }))
+        )
+        //Connected Users: [ { id: '10', username: 'rohan21' } ]
+
+        // User Requests Online Astrologers
+        socket.on("getOnlineAstrologers", () => {
+            console.log("Connected Users:")
+            Object.entries(connectedUsers).forEach(([id, user]) => {
+                console.log(
+                    `ID: ${id}, Username: ${user.username}, Role: ${user.role}, ShowOnline: ${user.showOnline}`
+                )
+            })
+
+            const onlineAstrologers = Object.entries(connectedUsers)
+                .filter(
+                    ([_, user]) => user.role === "astrologer" && user.showOnline
+                )
+                .map(([id, user]) => ({ id, username: user.username }))
+
+            console.log("Filtered Online Astrologers:", onlineAstrologers)
+            socket.emit("onlineAstrologersList", onlineAstrologers)
+        })
+
+        socket.on("toggle-online-visibility", ({ id, showOnline }) => {
+            console.log(`User ${id} changed online visibility to ${showOnline}`)
+            console.log(
+                `Connected User showOnline status: ${connectedUsers[id]?.showOnline}`
+            )
+            if (
+                connectedUsers[id] &&
+                connectedUsers[id].role === "astrologer"
+            ) {
+                connectedUsers[id].showOnline = showOnline
+                io.emit("astrologer-status-update", {
+                    id,
+                    username: connectedUsers[id].username,
+                    status: showOnline ? "online" : "offline",
+                })
+            }
+        })
 
         // Astrologer Dashboard Connection
         socket.on("joinAstrologer", ({ astrologerId, isAstrologer }) => {
-            connectedUsers[astrologerId] = { socket, username }
-            // console.log(`Astrologer connected: ${astrologerId}`)
+            // Merge existing info instead of overwriting
+            const existing = connectedUsers[astrologerId] || {}
+            connectedUsers[astrologerId] = {
+                ...existing,
+                socket,
+                username: existing.username || username,
+                role: existing.role || (isAstrologer ? "astrologer" : "user"),
+                showOnline: existing.showOnline ?? (isAstrologer ? true : undefined),
+            }            
 
             if (isAstrologer) io.emit("astrologerOnline", { astrologerId })
         })
@@ -82,8 +137,8 @@ export const initChatSocket = (server) => {
                 try {
                     await ChatMessage.create({
                         roomId,
-                        senderId:senderID,
-                        receiverId:receiverID,
+                        senderId: senderID,
+                        receiverId: receiverID,
                         message,
                         timestamp,
                     })
@@ -103,11 +158,11 @@ export const initChatSocket = (server) => {
                     }
 
                     if (recipient) {
-                        recipient.socket.emit("receiveMessage", messageData)
+                        // recipient.socket.emit("receiveMessage", messageData)
                     } else {
                         sendOfflineNotification(receiverID, senderID, message)
                     }
-                    console.log(`Broadcasting data is ${JSON.stringify(messageData)}`)
+                    // console.log(`Broadcasting data is ${JSON.stringify(messageData)}`)
                     io.to(roomId).emit("receiveMessage", messageData)
                 } catch (error) {
                     console.error("Error storing message:", error)
