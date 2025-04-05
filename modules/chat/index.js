@@ -46,22 +46,22 @@ export const initChatSocket = (server) => {
             showOnline: role === "astrologer" ? true : undefined,
         }
 
-        console.log(
-            "Connected Users:",
-            Object.entries(connectedUsers).map(([id, { username }]) => ({
-                id,
-                username,
-            }))
-        )
+        // console.log(
+        //     "Connected Users:",
+        //     Object.entries(connectedUsers).map(([id, { username }]) => ({
+        //         id,
+        //         username,
+        //     }))
+        // )
         //Connected Users: [ { id: '10', username: 'rohan21' } ]
 
         // User Requests Online Astrologers
         socket.on("getOnlineAstrologers", () => {
-            console.log("Connected Users:")
+            // console.log("Connected Users:")
             Object.entries(connectedUsers).forEach(([id, user]) => {
-                console.log(
-                    `ID: ${id}, Username: ${user.username}, Role: ${user.role}, ShowOnline: ${user.showOnline}`
-                )
+                // console.log(
+                //     `ID: ${id}, Username: ${user.username}, Role: ${user.role}, ShowOnline: ${user.showOnline}`
+                // )
             })
 
             const onlineAstrologers = Object.entries(connectedUsers)
@@ -70,15 +70,15 @@ export const initChatSocket = (server) => {
                 )
                 .map(([id, user]) => ({ id, username: user.username }))
 
-            console.log("Filtered Online Astrologers:", onlineAstrologers)
+            // console.log("Filtered Online Astrologers:", onlineAstrologers)
             socket.emit("onlineAstrologersList", onlineAstrologers)
         })
 
         socket.on("toggle-online-visibility", ({ id, showOnline }) => {
-            console.log(`User ${id} changed online visibility to ${showOnline}`)
-            console.log(
-                `Connected User showOnline status: ${connectedUsers[id]?.showOnline}`
-            )
+            // console.log(`User ${id} changed online visibility to ${showOnline}`)
+            // console.log(
+            //     `Connected User showOnline status: ${connectedUsers[id]?.showOnline}`
+            // )
             if (
                 connectedUsers[id] &&
                 connectedUsers[id].role === "astrologer"
@@ -101,8 +101,9 @@ export const initChatSocket = (server) => {
                 socket,
                 username: existing.username || username,
                 role: existing.role || (isAstrologer ? "astrologer" : "user"),
-                showOnline: existing.showOnline ?? (isAstrologer ? true : undefined),
-            }            
+                showOnline:
+                    existing.showOnline ?? (isAstrologer ? true : undefined),
+            }
 
             if (isAstrologer) io.emit("astrologerOnline", { astrologerId })
         })
@@ -134,6 +135,8 @@ export const initChatSocket = (server) => {
         socket.on(
             "sendMessage",
             async ({ roomId, message, senderID, receiverID, timestamp }) => {
+
+                // Message will be saved in DB 
                 try {
                     await ChatMessage.create({
                         roomId,
@@ -149,7 +152,7 @@ export const initChatSocket = (server) => {
                     //     receiverId is ${receiverID}
                     //     timestamp is ${timestamp}`)
 
-                    const recipient = connectedUsers[receiverID]
+                    const recipient = connectedUsers[receiverID] // Check if the receiver (astrologer) is online
                     const messageData = {
                         message,
                         senderID,
@@ -158,7 +161,13 @@ export const initChatSocket = (server) => {
                     }
 
                     if (recipient) {
-                        // recipient.socket.emit("receiveMessage", messageData)
+                        // console.log(`Astrologer ${receiverID} is online`)
+                        // ✅ Send real-time notification to astrologer if online
+                        recipient.socket.emit("newMessage", {
+                            from: senderID,
+                            message,
+                            timestamp,
+                        })
                     } else {
                         sendOfflineNotification(receiverID, senderID, message)
                     }
