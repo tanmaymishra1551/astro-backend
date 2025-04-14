@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken"
 import ChatMessage from "../../modules/chat/models/ChatMessage.js"
 import { sendOfflineNotification } from "./services/notificationService.js"
 
-const connectedUsers = {} // userId -> { socket, username }
+export const connectedUsers = {} // userId -> { socket, username }
 
 export const initChatSocket = (server) => {
     const io = new Server(server, {
@@ -57,7 +57,6 @@ export const initChatSocket = (server) => {
 
         // User Requests Online Astrologers
         socket.on("getOnlineAstrologers", () => {
-            // console.log("Connected Users:")
             Object.entries(connectedUsers).forEach(([id, user]) => {
                 // console.log(
                 //     `ID: ${id}, Username: ${user.username}, Role: ${user.role}, ShowOnline: ${user.showOnline}`
