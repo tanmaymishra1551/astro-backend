@@ -36,6 +36,7 @@ export const initChatSocket = (server) => {
             socket.disconnect()
             return
         }
+        console.log(`Chat socket connection is established`)
         // console.log(`User connected: ${JSON.stringify(socket.user)}`)
         // {"id":1,"username":"rahul90","role":"user","iat":1743137646,"exp":1743138546}
         const { id: userId, username, role, showOnline } = socket.user
@@ -124,18 +125,30 @@ export const initChatSocket = (server) => {
         })
 
         // Join Chat Room
-        socket.on("joinRoom", ({ roomId }) => {
+        // socket.on("joinRoom", ({ roomId }) => {
+        //     socket.join(roomId)
+        //     // console.log(`${username} (${socket.id}) joined room ${roomId}`)
+        //     // rahul90 (knGABIikQXpglRgHAAAC) joined room chat_2_1
+        // })
+
+        socket.on("join-room", ({ roomId, recipientId, loggedInUser }) => {
+            // console.log(`Room id and recipientId: ${roomId} and ${recipientId}`)
             socket.join(roomId)
-            // console.log(`${username} (${socket.id}) joined room ${roomId}`)
-            // rahul90 (knGABIikQXpglRgHAAAC) joined room chat_2_1
+            if (connectedUsers[recipientId]) {
+                const recipientSocket = connectedUsers[recipientId].socket
+                // Use socket.to(recipientSocketId) or broadcast to that socket’s room
+                socket.to(roomId).emit("user-joined", recipientSocket.id)
+                // console.log(`${recipientSocket.id} joined room: ${roomId}`)
+            } else {
+                console.log(`User with ID ${recipientId} is not connected`)
+            }
         })
 
         // Handle Sending Messages
         socket.on(
             "sendMessage",
             async ({ roomId, message, senderID, receiverID, timestamp }) => {
-
-                // Message will be saved in DB 
+                // Message will be saved in DB
                 try {
                     await ChatMessage.create({
                         roomId,
@@ -177,6 +190,36 @@ export const initChatSocket = (server) => {
                 }
             }
         )
+
+        //Video Call Request
+        socket.on("video-call-request", ({ roomId, from, to }) => {
+            // console.log(`Video call request from ${from} to ${to} in room ${roomId}`)
+            const recipient = connectedUsers[to]
+            if (recipient) {
+                // console.log(`Recipient socket ID: ${recipient.socket.id} and roomId: ${roomId} and from is ${from}`)
+                socket
+                    .to(recipient.socket.id)
+                    .emit("video-call-request", { roomId, from })
+                console.log(`🔔 Video call request from ${from} to ${to}`);
+            } else {
+                console.log(`❌ Recipient ${to} not online`)
+            }
+        })
+
+        socket.on("offer", ({ offer, to }) => {
+            const offerObj = JSON.stringify(offer.sdp)
+            // console.log(`Offer from ${offerObj} to ${to}`)
+            socket.to(to).emit("offer", { offer, from: socket.id })
+        })
+
+        socket.on("answer", ({ answer, to }) => {
+            socket.to(to).emit("answer", { answer, from: socket.id })
+        })
+
+        socket.on("ice-candidate", ({ candidate, to }) => {
+            // console.log(`ICE candidate from ${candidate} to ${to}`)
+            socket.to(to).emit("ice-candidate", { candidate, from: socket.id })
+        })
 
         // Handle Disconnection
         socket.on("disconnect", () => {

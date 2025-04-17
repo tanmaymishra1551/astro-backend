@@ -2,7 +2,7 @@ import { Server } from "socket.io"
 import { connectedUsers } from "../chat/index.js"
 
 let callIO
-console.log (`connectedUsers: ${JSON.stringify(connectedUsers)}`)
+// console.log (`connectedUsers: ${JSON.stringify(connectedUsers)}`)
 export function initCallSocket(server) {
     callIO = new Server(server, {
         cors: {
@@ -16,14 +16,14 @@ export function initCallSocket(server) {
         console.log("🟣 User connected to /call:", socket.id)
 
         socket.on("join-room", ({ roomId, recipientId }) => {
-            console.log(`Room id and recipientId: ${roomId} and ${recipientId}`)
+            // console.log(`Room id and recipientId: ${roomId} and ${recipientId}`)
             socket.join(roomId)
             if (connectedUsers[recipientId]) {
                 const recipientSocket = connectedUsers[recipientId].socket
-                console.log(`Recipient socket ID: ${recipientSocket.id}`)
+                // console.log(`Recipient socket ID: ${recipientSocket.id}`)
                 // Use socket.to(recipientSocketId) or broadcast to that socket’s room
                 socket.to(roomId).emit("user-joined", recipientSocket.id)
-                console.log(`${socket.id} joined room: ${roomId}`)
+                // console.log(`${socket.id} joined room: ${roomId}`)
             }
             else{
                 console.log(`User with ID ${recipientId} is not connected`)
@@ -31,11 +31,12 @@ export function initCallSocket(server) {
         })
 
         socket.on("video-call-request", ({ roomId, from, to }) => {
-            console.log(`Video call request from ${from} to ${to}`)
+            console.log(`Video call request from ${from} to ${to} in room ${roomId}`)
             const recipient = connectedUsers[to];
             if (recipient) {
+                console.log(`Recipient socket ID: ${recipient.socket.id} and roomId: ${roomId} and from is ${from}`) 
                 socket.to(recipient.socket.id).emit("video-call-request", { roomId, from });
-                console.log(`🔔 Video call request from ${from} to ${to}`);
+                // console.log(`🔔 Video call request from ${from} to ${to}`);
             } else {
                 console.log(`❌ Recipient ${to} not online`);
             }
@@ -43,7 +44,7 @@ export function initCallSocket(server) {
 
         socket.on("offer", ({ offer, to }) => {
             const offerObj = JSON.stringify(offer.sdp)
-            console.log(`Offer from ${offerObj} to ${to}`)
+            // console.log(`Offer from ${offerObj} to ${to}`)
             socket.to(to).emit("offer", { offer, from: socket.id })
         })
 
@@ -52,7 +53,7 @@ export function initCallSocket(server) {
         })
 
         socket.on("ice-candidate", ({ candidate, to }) => {
-            console.log(`ICE candidate from ${candidate} to ${to}`)
+            // console.log(`ICE candidate from ${candidate} to ${to}`)
             socket.to(to).emit("ice-candidate", { candidate, from: socket.id })
         })
 
