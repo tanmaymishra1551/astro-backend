@@ -131,12 +131,14 @@ export const initChatSocket = (server) => {
         //     // rahul90 (knGABIikQXpglRgHAAAC) joined room chat_2_1
         // })
 
-        socket.on("join-room", ({ roomId, recipientId, loggedInUser }) => {
-            // console.log(`Room id and recipientId: ${roomId} and ${recipientId}`)
+        socket.on("join-room", ({ roomId, recipientId, loggedInUserName }) => {
+            console.log(`User ${loggedInUserName} with socket id is ${socket.id} joined room ${roomId}`)
+            console.log(`User ${loggedInUserName} want to connect to ${recipientId}`)
             socket.join(roomId)
             if (connectedUsers[recipientId]) {
                 const recipientSocket = connectedUsers[recipientId].socket
                 // Use socket.to(recipientSocketId) or broadcast to that socket’s room
+                console.log(`RoomId is ${roomId} and recipient socket id is: ${recipientSocket.id}`)
                 socket.to(roomId).emit("user-joined", recipientSocket.id)
                 // console.log(`${recipientSocket.id} joined room: ${roomId}`)
             } else {
@@ -206,13 +208,15 @@ export const initChatSocket = (server) => {
             }
         })
 
-        socket.on("offer", ({ offer, to }) => {
+        socket.on("offer", ({ offer,iceCandidates, roomId, callerId,calleeId }) => {
             const offerObj = JSON.stringify(offer.sdp)
-            // console.log(`Offer from ${offerObj} to ${to}`)
-            socket.to(to).emit("offer", { offer, from: socket.id })
+            console.log(`Offer from offerObj to ${callerId}`)
+            console.log(`type of iceCandidates is ${typeof (iceCandidates)}`)
+            socket.to(callerId).emit("offer", { offer, iceCandidates,roomId, calleeId:socket.id })
         })
 
         socket.on("answer", ({ answer, to }) => {
+            console.log(`Answer is ${answer} from ${to}`)
             socket.to(to).emit("answer", { answer, from: socket.id })
         })
 
