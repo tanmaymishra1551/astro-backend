@@ -134,16 +134,7 @@ export const initChatSocket = (server) => {
         socket.on("join-room", ({ roomId, recipientId, loggedInUserName }) => {
             console.log(`User ${loggedInUserName} with socket id is ${socket.id} joined room ${roomId}`)
             console.log(`User ${loggedInUserName} want to connect to ${recipientId}`)
-            socket.join(roomId)
-            if (connectedUsers[recipientId]) {
-                const recipientSocket = connectedUsers[recipientId].socket
-                // Use socket.to(recipientSocketId) or broadcast to that socket’s room
-                console.log(`RoomId is ${roomId} and recipient socket id is: ${recipientSocket.id}`)
-                socket.to(roomId).emit("user-joined", recipientSocket.id)
-                // console.log(`${recipientSocket.id} joined room: ${roomId}`)
-            } else {
-                console.log(`User with ID ${recipientId} is not connected`)
-            }
+            socket.join(roomId);
         })
 
         // Handle Sending Messages
@@ -194,14 +185,14 @@ export const initChatSocket = (server) => {
         )
 
         //Video Call Request
-        socket.on("video-call-request", ({ roomId, from, to }) => {
-            // console.log(`Video call request from ${from} to ${to} in room ${roomId}`)
+        socket.on("video-call-request", ({ roomId, from, to, username }) => {
+            console.log(`Video call request from ${username} with socket id ${from} to ${to} in room ${roomId}`)
             const recipient = connectedUsers[to]
             if (recipient) {
                 // console.log(`Recipient socket ID: ${recipient.socket.id} and roomId: ${roomId} and from is ${from}`)
                 socket
                     .to(recipient.socket.id)
-                    .emit("video-call-request", { roomId, from })
+                    .emit("video-call-request", { roomId, from, username})
                 console.log(`🔔 Video call request from ${from} to ${to}`);
             } else {
                 console.log(`❌ Recipient ${to} not online`)
@@ -215,9 +206,9 @@ export const initChatSocket = (server) => {
             socket.to(callerId).emit("offer", { offer, iceCandidates,roomId, calleeId:socket.id })
         })
 
-        socket.on("answer", ({ answer, to }) => {
-            console.log(`Answer is ${answer} from ${to}`)
-            socket.to(to).emit("answer", { answer, from: socket.id })
+        socket.on("answer", ({ answer,iceCandidates, to }) => {
+            console.log(`Answer from caller ${answer} from ${to}`)
+            socket.to(to).emit("answer", { answer,iceCandidates, from: socket.id })
         })
 
         socket.on("ice-candidate", ({ candidate, to }) => {
