@@ -15,10 +15,8 @@ app.use(cors());
 app.use(bodyParser.json())
 const server = http.createServer(app)
 // Initialize WebSocket server for the Chat module
-import { initChatSocket } from "./modules/chat/index.js"
-import { initCallSocket } from "./modules/call/index.js"
-initChatSocket(server)
-initCallSocket(server)
+import { initSocket } from "./utils/initSocket.js"
+initSocket(server)
 
 // Import module routes
 import authRoutes from "./modules/auth/routes/authRoutes.js"
