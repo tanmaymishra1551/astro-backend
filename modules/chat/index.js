@@ -24,6 +24,7 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
 
     // Updates the astrologer's online status, then broadcasts it to all clients.
     socket.on("toggle-online-visibility", ({ id, showOnline }) => {
+        // console.log(`toggle-online-visibility event triggered`)
         // console.log(`User ${id} changed online visibility to ${showOnline}`)
         // console.log(
         //     `Connected User showOnline status: ${connectedUsers[id]?.showOnline}`
@@ -58,6 +59,7 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
 
     // Fetch Unread Messages
     socket.on("getUnreadMessages", async ({ astrologerId }) => {
+        // console.log(`getUnreadMessages is triggered`)
         // console.log(`Astrologer id from astrologer dashboard is ${astrologerId}`)
         try {
             const unreadMessages = await ChatMessage.find({
@@ -65,7 +67,7 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
                 read: false,
             })
 
-            // console.log(`Unread messages for ${astrologerId}:`,unreadMessages.length)
+            console.log(`Unread messages for ${astrologerId}:`,unreadMessages.length)
             socket.emit("loadUnreadMessages", unreadMessages)
         } catch (error) {
             console.error("Error fetching unread messages:", error)
@@ -74,14 +76,13 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
 
     // Add the user's socket to the specified room for communication.
     socket.on("join-room", ({ roomId, recipientId, loggedInUserName }) => {
-        // console.log(`User ${loggedInUserName} with socket id is ${socket.id} joined room ${roomId}`)
-        // console.log(`User ${loggedInUserName} want to connect to ${recipientId}`)
+        console.log(`joinroom event is triggered`)
         socket.join(roomId)
     })
     //---------------------END----------------------------------
 
     socket.on("markAsRead", async ({ messageId }) => {
-        // console.log(`Message id sent from frontend is ${messageId}`)
+        console.log(`Message id sent from frontend is ${messageId}`)
 
         try {
             const updatedMessage = await ChatMessage.findByIdAndUpdate(
@@ -95,7 +96,7 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
                 return
             }
 
-            console.log("Updated message:", updatedMessage)
+            // console.log("Updated message:", updatedMessage)
         } catch (err) {
             console.error("Error updating message:", err)
         }
@@ -142,10 +143,6 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
                     timestamp,
                 }
                 if (recipient) {
-                    // ✅ Mark the message as read immediately if recipient is online
-                    await ChatMessage.findByIdAndUpdate(messageId, {
-                        read: true,
-                    })
                     // console.log(`Astrologer ${receiverID} is online`)
                     // ✅ Send real-time notification to astrologer if online
                     recipient.socket.emit("newMessage", {
@@ -155,10 +152,11 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
                     })
                 } else {
                     sendOfflineNotification(receiverID, senderID, message)
+                    
                 }
-                console.log(
-                    `Broadcasting data is ${JSON.stringify(messageData)}`
-                )
+                // console.log(
+                //     `Broadcasting data is ${JSON.stringify(messageData)}`
+                // )
                 io.to(roomId).emit("receiveMessage", messageData)
             } catch (error) {
                 console.error("Error storing message:", error)
