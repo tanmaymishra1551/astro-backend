@@ -119,6 +119,7 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
             // Message will be saved in DB
             try {
                 const newMessage = await ChatMessage.create({
+                    fullname:loggedInFullname,
                     roomId,
                     senderId: senderID,
                     receiverId: receiverID,
