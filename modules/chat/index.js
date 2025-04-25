@@ -78,8 +78,28 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
         // console.log(`User ${loggedInUserName} want to connect to ${recipientId}`)
         socket.join(roomId)
     })
-
     //---------------------END----------------------------------
+
+    socket.on("markAsRead", async ({ messageId }) => {
+        // console.log(`Message id sent from frontend is ${messageId}`)
+
+        try {
+            const updatedMessage = await ChatMessage.findByIdAndUpdate(
+                messageId,
+                { read: true },
+                { new: true }
+            )
+
+            if (!updatedMessage) {
+                console.log("Message not found")
+                return
+            }
+
+            console.log("Updated message:", updatedMessage)
+        } catch (err) {
+            console.error("Error updating message:", err)
+        }
+    })
 
     // Listens for "sendMessage" event.
     // Saves the message in the database.
@@ -88,10 +108,17 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
     // Broadcasts the message to the room.
     socket.on(
         "sendMessage",
-        async ({ roomId, message, senderID, loggedInUserName, receiverID, timestamp }) => {
+        async ({
+            roomId,
+            message,
+            senderID,
+            loggedInFullname,
+            receiverID,
+            timestamp,
+        }) => {
             // Message will be saved in DB
             try {
-                await ChatMessage.create({
+                const newMessage = await ChatMessage.create({
                     roomId,
                     senderId: senderID,
                     receiverId: receiverID,
@@ -104,27 +131,33 @@ export const registerChatHandlers = (socket, io, connectedUsers) => {
                 //     senderId is ${senderID}
                 //     receiverId is ${receiverID}
                 //     timestamp is ${timestamp}`)
+                const messageId = newMessage._id
                 const recipient = connectedUsers[receiverID] // Check if the receiver (astrologer) is online
                 const messageData = {
                     message,
                     senderID,
+                    loggedInFullname,
                     receiverID,
                     timestamp,
                 }
                 if (recipient) {
+                    // ✅ Mark the message as read immediately if recipient is online
+                    await ChatMessage.findByIdAndUpdate(messageId, {
+                        read: true,
+                    })
                     // console.log(`Astrologer ${receiverID} is online`)
                     // ✅ Send real-time notification to astrologer if online
                     recipient.socket.emit("newMessage", {
-                        from: loggedInUserName,
+                        from: loggedInFullname,
                         message,
                         timestamp,
                     })
                 } else {
                     sendOfflineNotification(receiverID, senderID, message)
                 }
-                // console.log(
-                //     `Broadcasting data is ${JSON.stringify(messageData)}`
-                // )
+                console.log(
+                    `Broadcasting data is ${JSON.stringify(messageData)}`
+                )
                 io.to(roomId).emit("receiveMessage", messageData)
             } catch (error) {
                 console.error("Error storing message:", error)
